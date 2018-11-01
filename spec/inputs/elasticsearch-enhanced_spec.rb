@@ -1,6 +1,6 @@
 # encoding: utf-8
 require "logstash/devutils/rspec/spec_helper"
-require "logstash/inputs/elasticsearch-enhanced"
+require "logstash/inputs/elasticsearch_enhanced"
 
 describe LogStash::Inputs::ElasticsearchEnhanced do
 

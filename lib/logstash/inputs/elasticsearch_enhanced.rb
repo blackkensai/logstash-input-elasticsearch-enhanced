@@ -8,7 +8,7 @@ require "socket" # for Socket.gethostname
 # This plugin is intented only as an example.
 
 class LogStash::Inputs::ElasticsearchEnhanced < LogStash::Inputs::Base
-  config_name "elasticsearch_with_head"
+  config_name "elasticsearch_enhanced"
 
   default :codec, "json"
 
@@ -95,8 +95,12 @@ class LogStash::Inputs::ElasticsearchEnhanced < LogStash::Inputs::Base
   # exactly once.
   config :schedule, :validate => :string
 
+  # generate head/tail event, body here
   config :head, :validate => :hash
   config :tail, :validate => :hash
+
+  # generate count event(type == count)
+  config :count_event, :validate => :boolean, :default => false
 
   def register
     require "elasticsearch"
@@ -172,7 +176,22 @@ class LogStash::Inputs::ElasticsearchEnhanced < LogStash::Inputs::Base
     end
   end
 
+  def generate_count_event(output_queue)
+    slice_query = @base_query
+    slice_options = @options.merge(:body => LogStash::Json.dump(slice_query) )
+    r = search_request(slice_options)
+    data = { '_type' => 'count', 'count' => r['hits']['total'] }
+    logger.info('Count event:', data)
+    event = LogStash::Event.new(data)
+    decorate(event)
+    output_queue << event
+  end
+
   def do_run(output_queue)
+    if @count_event
+      generate_count_event(output_queue)
+      return
+    end
     create_head(output_queue)
     begin
       # if configured to run a single slice, don't bother spinning up threads
